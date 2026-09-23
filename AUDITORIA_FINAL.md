@@ -19,7 +19,7 @@ O trabalho cobre as oito seções e os três entregáveis solicitados. O noteboo
 | Probabilidade de falha apresentada como estimada | Reclassificada como premissa não calibrada; Isolation Forest usado só para raridade |
 | Custo tratado como business case completo | Renomeado como custo parcial e acompanhado das variáveis econômicas ausentes |
 | Importância preditiva sugeria causalidade | Relatório e slides agora declaram explicitamente que associação não prova efeito de manutenção |
-| Roteiro tinha cerca de 9 minutos | Refeito em linguagem simples para 12–14 minutos e 16 slides |
+| Roteiro tinha cerca de 9 minutos | Refeito em linguagem simples para 14–15 minutos e 20 slides |
 | Métricas divergiam entre arquivos | Notebook, relatório, PDF e slides usam a mesma execução |
 | Projeto sem dependências declaradas | Criados `pyproject.toml` e indicação da versão compatível do Python |
 | Estrutura determinística de produção não explorada | Identidade `Yield = 0,18 × Flow × Health` incorporada ao modelo híbrido |

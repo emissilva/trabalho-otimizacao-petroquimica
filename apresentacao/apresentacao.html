@@ -30,6 +30,7 @@
 .option{border-top:3px solid var(--teal);background:var(--white);border-radius:9px;padding:20px}.option:nth-child(2){border-color:var(--sun)}.option:nth-child(3){border-color:var(--coral)}.option:nth-child(4){border-color:var(--lilac)}.option h3{margin:0 0 12px;font-size:16px;color:var(--muted)}.option .yield{font-size:31px;font-weight:800;letter-spacing:-.06em}.option p{margin:11px 0 0;font-size:13px;color:var(--muted)}
 .ladder{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:24px;align-items:stretch}.ladder .step{padding:18px;background:var(--white);border:1px solid var(--line);border-radius:10px;min-height:138px}.ladder .step:nth-child(2){min-height:138px;background:#eef8f7;border-color:var(--teal)}.ladder .step:nth-child(3){min-height:138px;background:#fff1f3;border-color:var(--coral)}.ladder h3{font-size:17px;margin:6px 0 8px}.ladder p{font-size:12px;line-height:1.35;color:var(--muted);margin:0}.ladder .level{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--coral)}.why-box{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:11px 14px;font-size:11px;line-height:1.35;color:var(--muted)}.why-box b{color:var(--ink)}
 .closing{padding-top:62px}.closing .title{max-width:950px}.closing .rule{width:150px}.closing-list{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:8px 38px;max-width:1080px}.closing-list div{font-size:12px;line-height:1.35;padding:10px 0;border-bottom:1px solid var(--line);color:var(--muted)}.closing-list b{display:block;color:var(--ink);margin:0 0 5px;font-size:13px}.closing-list span{color:var(--muted)}.source{position:absolute;right:74px;bottom:67px;font-size:11px;color:var(--muted)}
+.explain-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}.explain-card{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:22px 24px;min-height:300px}.explain-card h3{font-size:20px;margin:0 0 12px}.explain-card p,.explain-card li{font-size:13px;line-height:1.45;color:var(--muted)}.explain-card code{display:block;margin:13px 0;padding:13px;background:#f1f3f5;border-radius:7px;color:var(--ink);font-size:13px}.explain-card ul{padding-left:18px;margin:10px 0}.metric-defs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}.metric-def{background:var(--white);border:1px solid var(--line);border-radius:9px;padding:17px}.metric-def b{display:block;color:var(--coral);font-size:21px;margin-bottom:7px}.metric-def p{font-size:12px;line-height:1.4;color:var(--muted);margin:0}.folds{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px}.fold{background:var(--white);border:1px solid var(--line);border-radius:9px;padding:14px 16px;font-size:12px;color:var(--muted)}.fold strong{display:block;color:var(--ink);font-size:14px;margin-bottom:7px}.fold .train{color:var(--teal);font-weight:700}.fold .valid{color:var(--coral);font-weight:700}.assumption-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}.assumption{background:var(--white);border:1px solid var(--line);border-radius:9px;padding:16px 18px;min-height:104px}.assumption b{display:block;color:var(--coral);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}.assumption strong{font-size:24px;display:block}.assumption span{font-size:11px;line-height:1.35;color:var(--muted);display:block;margin-top:5px}.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}.calc-box{background:var(--white);border:1px solid var(--line);border-radius:9px;padding:18px 20px}.calc-box h3{font-size:17px;margin:0 0 11px}.calc-box p{font-size:12px;line-height:1.42;color:var(--muted);margin:7px 0}.calc-box code{display:block;font-size:12px;padding:9px 11px;background:#f1f3f5;border-radius:6px;margin:8px 0;color:var(--ink)}
 @media print{body{padding:0;background:white}.slide{margin:0}.footer{bottom:22px}}
 </style>
 </head>
@@ -65,55 +66,43 @@
 
 <section class="slide closing"><div class="kicker">15 · conclusão</div><h2 class="title">Conclusões e respostas</h2><div class="closing-list"><div><b>1. Qual configuração operacional foi recomendada?</b><span>Flow 694,11 m³/h; temperatura 795,14 °C; pressão 33,32 bar; válvula 79,53%.</span></div><div><b>2. A manutenção deve ser realizada? Em quais condições?</b><span>Recomenda-se inspeção imediata e manutenção se sensores e degradação forem confirmados.</span></div><div><b>3. Qual foi o impacto econômico esperado?</b><span>Economia parcial estimada em R$ 175 mil em 30 dias, sob premissas didáticas.</span></div><div><b>4. Quais são os principais riscos?</b><span>Erro do modelo, sensores incorretos, extrapolação, mudança do processo e premissas financeiras.</span></div><div><b>5. A decisão deve ser automática ou humana?</b><span>Monitoramento automático, setpoints supervisionados e parada com aprovação humana.</span></div><div><b>6. Quais dados adicionais são necessários?</b><span>Falhas, intervenções, limites oficiais, preços, margem, demanda, estoque e custo completo da parada.</span></div></div><p class="subtitle" style="margin-top:18px;font-size:14px">Conclusão geral: a solução apoia a decisão operacional, mas não autoriza uma parada autônoma da planta.</p><div class="source">Equipe Predictfy · FIAP</div><div class="footer"><span>CONCLUSÃO</span><span class="num">16</span></div></section>
 <script>
-const reportTitles = [
-  "Caso de estudo e objetivo da análise",
-  "Configuração e critérios para a decisão",
-  "Variáveis utilizadas e etapas da análise",
-  "Base de dados e criação de variáveis",
-  "Controle de target leakage",
-  "Modelos avaliados e escolha final",
-  "Validação temporal e margem de incerteza",
-  "Definição da otimização operacional",
-  "Condição do ativo e hipótese de manutenção",
-  "Configuração operacional recomendada",
-  "Comparação dos cenários de manutenção",
-  "Resultado considerando a incerteza",
-  "Configurações para diferentes metas de produção",
-  "Automação e responsabilidade pela decisão",
-  "Conclusões e respostas"
-];
+const originalSlides = [...document.querySelectorAll("section.slide:not(.cover)")];
+
+originalSlides[4].insertAdjacentHTML("beforebegin", `
+<section class="slide"><div class="kicker">00 · fórmulas da base</div><h2 class="title">Como as fórmulas foram verificadas</h2><p class="subtitle">As relações foram reconstruídas para todos os registros e comparadas com os targets originais.</p><div class="explain-grid"><div class="explain-card"><h3>Product Yield</h3><p>Representa a produção, em toneladas, por intervalo de quatro horas.</p><code>Yield / (Flow × Health) = 0,18</code><p>A razão permanece constante em toda a base. Por isso:</p><code>Yield = 0,18 × Flow × Health</code><p>O resultado perfeito indica uma regra determinística da base sintética, não desempenho garantido em uma planta real.</p></div><div class="explain-card"><h3>Energy Intensity</h3><p>Representa a energia equivalente consumida por tonelada produzida.</p><code>EI = (3,6 × eletricidade + 0,035 × gás) / Yield</code><p>Eletricidade e gás são conhecidos somente após a operação. Usá-los como entradas produziria target leakage.</p><p>O modelo de energia utiliza apenas informações disponíveis antes da operação.</p></div></div><div class="footer"><span>VERIFICAÇÃO ALGÉBRICA</span><span class="num">00</span></div></section>`);
+
+originalSlides[6].insertAdjacentHTML("beforebegin", `
+<section class="slide"><div class="kicker">00 · leitura das métricas</div><h2 class="title">Como interpretar as métricas e a validação</h2><div class="metric-defs"><div class="metric-def"><b>R²</b><p>Percentual da variação explicado. Energia: 0,693, aproximadamente 69,3%.</p></div><div class="metric-def"><b>MAE</b><p>Erro médio em valor absoluto. Energia: 0,276, cerca de 9,6% da média.</p></div><div class="metric-def"><b>RMSE</b><p>Penaliza erros grandes. Energia: 0,340, cerca de 11,8% da média.</p></div></div><div class="folds"><div class="fold"><strong>Fold 1</strong><span class="train">Treino: 5.000</span><br><span class="valid">Validação: 1.000 seguintes</span></div><div class="fold"><strong>Fold 2</strong><span class="train">Treino: 6.000</span><br><span class="valid">Validação: 1.000 seguintes</span></div><div class="fold"><strong>Fold 3</strong><span class="train">Treino: 7.000</span><br><span class="valid">Validação: 1.000 seguintes</span></div></div><div class="grid two" style="margin-top:18px"><div class="why-box"><b>Por que walk-forward?</b> Treinamos com o passado e validamos no período seguinte, preservando a ordem temporal e verificando estabilidade.</div><div class="why-box"><b>Por que o híbrido?</b> Empatou com Gradient Boosting nos folds, foi ligeiramente melhor no teste e permite explicar a relação física utilizada.</div></div><div class="footer"><span>MÉTRICAS E VALIDAÇÃO TEMPORAL</span><span class="num">00</span></div></section>`);
+
+originalSlides[10].insertAdjacentHTML("beforebegin", `
+<section class="slide"><div class="kicker">00 · premissas econômicas</div><h2 class="title">Valores assumidos para comparar os cenários</h2><p class="subtitle">Estes valores não existem no dataset. São premissas didáticas e devem ser substituídos por dados reais da empresa.</p><div class="assumption-grid"><div class="assumption"><b>Horizonte</b><strong>30 dias</strong><span>180 intervalos de quatro horas</span></div><div class="assumption"><b>Parada</b><strong>8 horas</strong><span>dois intervalos sem produção</span></div><div class="assumption"><b>Manutenção imediata</b><strong>R$ 45 mil</strong><span>intervenção urgente assumida</span></div><div class="assumption"><b>Manutenção planejada</b><strong>R$ 25 mil</strong><span>realizada após 15 dias</span></div><div class="assumption"><b>Energia</b><strong>R$ 130</strong><span>por unidade de energia</span></div><div class="assumption"><b>Falha</b><strong>R$ 300 mil</strong><span>custo hipotético, sem histórico de falhas</span></div></div><div class="quote" style="font-size:18px;margin-top:18px">Essas premissas permitem comparar alternativas, mas não constituem um orçamento ou business case real.</div><div class="footer"><span>PREMISSAS DIDÁTICAS</span><span class="num">00</span></div></section>`);
+
+originalSlides[10].insertAdjacentHTML("afterend", `
+<section class="slide"><div class="kicker">00 · cálculo dos cenários</div><h2 class="title">Como produção, tempo e custo foram calculados</h2><div class="calc-grid"><div class="calc-box"><h3>Tempo de operação em 30 dias</h3><p><b>Sem manutenção:</b> 180 intervalos produzindo.</p><p><b>Imediata:</b> 2 intervalos de parada e 178 produzindo no estado recuperado.</p><p><b>Postergada:</b> 90 intervalos no estado atual, 2 de parada e 88 no estado recuperado.</p><code>Produção = yield por intervalo × intervalos operando</code></div><div class="calc-box"><h3>Composição do custo parcial</h3><code>Energia = EI × produção × R$ 130</code><code>Total = energia + manutenção + exposição à falha</code><p>A exposição à falha usa um índice assumido, pois não existem rótulos históricos de falha.</p><p>Receita, margem, estoque e custo completo da parada não foram incluídos.</p></div></div><table class="scenario-table" style="margin-top:16px"><thead><tr><th>Cenário</th><th>Produção</th><th>Custo de energia</th><th>Manutenção</th><th>Exposição à falha</th><th>Total parcial</th></tr></thead><tbody><tr><td>Sem manutenção</td><td>12.997 t</td><td>R$ 5,246 mi</td><td>R$ 0</td><td>R$ 190,6 mil</td><td>R$ 5,436 mi</td></tr><tr><td>Postergada</td><td>17.168 t</td><td>R$ 5,187 mi</td><td>R$ 25 mil</td><td>R$ 109,3 mil</td><td>R$ 5,322 mi</td></tr><tr><td>Imediata</td><td>21.582 t</td><td>R$ 5,187 mi</td><td>R$ 45 mil</td><td>R$ 28,6 mil</td><td>R$ 5,261 mi</td></tr></tbody></table><div class="small" style="margin-top:12px">Para produzir as mesmas 10 mil toneladas: 23,08 dias sem manutenção e 14,08 dias com manutenção imediata, incluindo a parada. O resultado depende da recuperação assumida.</div><div class="footer"><span>CÁLCULO E LIMITAÇÕES</span><span class="num">00</span></div></section>`);
+
 const contentSlides = [...document.querySelectorAll("section.slide:not(.cover)")];
-contentSlides.forEach((slide, index) => {
-  const title = slide.querySelector(":scope > h2.title");
-  title.textContent = reportTitles[index];
-});
+const slideByTitle = title => contentSlides.find(slide => slide.querySelector("h2")?.textContent.trim() === title);
 
-contentSlides[0].querySelector(".subtitle").textContent = "Selecionamos o registro com menor Sensor_Health no conjunto de teste para representar uma condição operacional degradada.";
-contentSlides[0].querySelectorAll(".metric")[1].innerHTML = '<span class="tag">critério</span><strong>produção e energia</strong><span>reduzir a intensidade energética sem comprometer a meta mínima de produção</span>';
-contentSlides[0].querySelectorAll(".metric")[2].innerHTML = '<span class="tag">cenários</span><strong>3 opções</strong><span>operar sem manutenção, postergar a intervenção ou realizar a manutenção</span>';
-contentSlides[0].querySelector(".quote").textContent = "Objetivo: recomendar setpoints operacionais e avaliar em quais condições a manutenção pode ser justificada.";
+slideByTitle("Variáveis utilizadas e etapas da análise").querySelector(".subtitle").textContent = "As variáveis foram separadas pelo papel que exercem no problema antes da modelagem e da otimização.";
+slideByTitle("Variáveis utilizadas e etapas da análise").querySelector(".footer span").textContent = "VARIÁVEIS E ETAPAS DA ANÁLISE";
+slideByTitle("Controle de target leakage").querySelector(".formula small").textContent = "Eletricidade, gás e produção só são conhecidos depois da operação. Foram usados na auditoria e como targets auxiliares, mas não como entradas pré-operacionais.";
 
-contentSlides[1].querySelector(".kicker").textContent = "02 · resultados principais";
-contentSlides[1].querySelector(".quote").textContent = "Os setpoints são recomendações do modelo. A inspeção e a autorização da manutenção permanecem sob responsabilidade humana.";
-contentSlides[1].querySelector(".footer span").textContent = "CONFIGURAÇÃO E CRITÉRIOS";
-
-contentSlides[2].querySelector(".subtitle").textContent = "As variáveis foram separadas pelo papel que exercem no problema antes da modelagem e da otimização.";
-contentSlides[2].querySelector(".footer span").textContent = "VARIÁVEIS E ETAPAS DA ANÁLISE";
-
-contentSlides[4].querySelector(".formula small").textContent = "Eletricidade, gás e produção só são conhecidos depois da operação. Foram usados na auditoria e como targets auxiliares, mas não como entradas pré-operacionais.";
-
+const stateSlide = slideByTitle("Condição do ativo e hipótese de manutenção");
 const stateExplanation = document.createElement("p");
 stateExplanation.className = "subtitle";
-stateExplanation.textContent = "O estado atual foi comparado com uma observação saudável da própria base. Essa comparação representa um cenário associativo, não uma estimativa causal do efeito da manutenção.";
-contentSlides[8].querySelector("h2").after(stateExplanation);
+stateExplanation.textContent = "A referência saudável veio de uma observação real da mesma unidade e do mesmo catalisador. Ela representa um cenário associativo, não o efeito causal comprovado da manutenção.";
+stateSlide.querySelector("h2").after(stateExplanation);
+slideByTitle("Automação e responsabilidade pela decisão").querySelector(".subtitle").textContent = "O nível de automação foi definido conforme a consequência da ação e a possibilidade de reversão.";
 
-contentSlides[12].querySelector(".quote").textContent = "As opções permitem ajustar a recomendação à meta de produção definida pela operação.";
-contentSlides[13].querySelector(".subtitle").textContent = "O nível de automação foi definido conforme a consequência da ação e a possibilidade de reversão.";
-contentSlides[14].querySelector(".source").textContent = "Equipe Predictfy · FIAP";
-
-const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-while (walker.nextNode()) {
-  walker.currentNode.nodeValue = walker.currentNode.nodeValue.replaceAll(",", ",");
-}
+document.querySelectorAll("section.slide").forEach((slide, pageIndex) => {
+  const number = String(pageIndex + 1).padStart(2, "0");
+  const footerNumber = slide.querySelector(".footer .num");
+  if (footerNumber) footerNumber.textContent = number;
+  if (!slide.classList.contains("cover")) {
+    const kicker = slide.querySelector(".kicker");
+    const label = kicker.textContent.includes("·") ? kicker.textContent.split("·").slice(1).join("·").trim() : kicker.textContent;
+    kicker.textContent = `${String(pageIndex).padStart(2, "0")} · ${label}`;
+  }
+});
 </script>
 </body></html>

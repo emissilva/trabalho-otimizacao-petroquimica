@@ -148,7 +148,7 @@ O foco não é apenas obter o melhor modelo ou a solução matemática. O objeti
 | Conclusões objetivas | Relatório, seção 8 | Presente |
 | Notebook executável | `notebook/pipeline_petroquimico.ipynb` | Executado integralmente em ambiente isolado, sem erros |
 | Relatório | `relatorio/relatorio.md`, `.html` e `.pdf` | Sincronizados com a execução revisada |
-| Apresentação de 10–15 minutos | `apresentacao/` | HTML claro com 16 slides; PDF e PPTX sincronizados; roteiro simplificado estimado em 12–14 minutos |
+| Apresentação de 10–15 minutos | `apresentacao/` | HTML claro com 20 slides; PDF e PPTX sincronizados; roteiro didático estimado em 14–15 minutos |
 
 ## Premissas e limitações que devem permanecer explícitas
 

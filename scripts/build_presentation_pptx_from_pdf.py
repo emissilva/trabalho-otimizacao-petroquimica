@@ -34,16 +34,16 @@ def build() -> None:
             stdout=subprocess.DEVNULL,
         )
         pages = sorted(Path(tmp).glob("slide-*.png"))
-        if len(pages) != 16:
-            raise RuntimeError(f"Esperadas 16 páginas; encontradas {len(pages)}")
+        if len(pages) != 20:
+            raise RuntimeError(f"Esperadas 20 páginas; encontradas {len(pages)}")
         for page in pages:
             slide = prs.slides.add_slide(blank)
             slide.shapes.add_picture(
                 str(page), 0, 0, width=prs.slide_width, height=prs.slide_height
             )
 
-    prs.core_properties.title = "Pipeline Petroquímico — ML, Otimização e Decisão"
-    prs.core_properties.subject = "Apresentação final — FIAP"
+    prs.core_properties.title = "Pipeline Petroquímico: ML, Otimização e Decisão"
+    prs.core_properties.subject = "Apresentação do projeto FIAP"
     prs.core_properties.author = "Equipe Predictfy"
     prs.save(OUT)
     print(f"PPTX criado com {len(prs.slides)} slides: {OUT}")
