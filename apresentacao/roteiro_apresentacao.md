@@ -43,7 +43,7 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 ## 10. Validação e incerteza
 
-“Na tabela da esquerda estão os resultados do teste final, que ficou separado até o fim. Na direita está a média dos três folds. Híbrido e Gradient Boosting ficaram praticamente empatados. Escolhemos o híbrido pela interpretação e pelo resultado ligeiramente melhor no teste. A margem de 0,552 cobriu 89,4% dos casos, próxima da meta de 90%.”
+“Target significa a variável que o modelo tenta prever. Aqui temos dois targets: intensidade energética e produção. Não significa escolher entre focar em energia ou produção. O R² igual a 1 da produção acontece porque ela foi gerada por uma fórmula exata na base sintética. Na tabela dos folds, o híbrido está destacado porque foi o selecionado; o Random Forest não foi escolhido. Para energia, usamos mil registros separados para calcular uma margem de erro de 0,552. Somada à previsão, essa margem cobriu 89,4% dos valores reais do teste.”
 
 ## 11. Otimização
 
@@ -51,11 +51,11 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 ## 12. Estado do ativo
 
-“Comparamos o estado atual com uma observação saudável real da mesma unidade e catalisador. Recuperação é a parte da diferença entre saúde 0,578 e 0,970 que seria recuperada. Com zero por cento de recuperação, perdemos o custo da intervenção. A partir de aproximadamente 1,8%, a economia estimada compensa os R$ 45 mil. Isso é um ponto de equilíbrio do cenário, não uma recuperação comprovada.”
+“A base não possui registros mostrando o resultado real de uma manutenção. Por isso, testamos uma faixa de recuperação. Zero por cento é apenas o cenário pessimista em que a manutenção não melhora o estado e perdemos os R$ 45 mil. Com 1,8%, chegamos ao ponto de equilíbrio. O cenário principal usa 100% da referência saudável, mas isso é uma hipótese que precisa ser confirmada com dados reais.”
 
 ## 13. Resultado final
 
-“Esta é a tabela final pedida no trabalho. Ela reúne os quatro setpoints, a produção esperada, a intensidade energética e os custos. A manutenção é recomendada somente depois da inspeção. Os setpoints podem ser supervisionados pelo sistema, mas a parada precisa de aprovação humana.”
+“Esta tabela mostra a configuração calculada para o cenário em que o ativo alcança a referência saudável, equivalente aos 100% de recuperação simulada no slide anterior. Ela não afirma que toda manutenção produzirá esse resultado. Os quatro setpoints, a produção, a energia e os custos dependem dessa hipótese. Por isso, a manutenção só deve ser autorizada após inspeção e validação operacional.”
 
 ## 14. Premissas econômicas
 
