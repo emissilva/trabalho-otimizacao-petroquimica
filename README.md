@@ -10,6 +10,7 @@ Antes de alterar os entregáveis, consulte `REQUISITOS_DO_TRABALHO.md` e `AUDITO
 - `notebook/`: pipeline executável e com saídas reproduzidas;
 - `relatorio/`: relatório Markdown, HTML e PDF sincronizados;
 - `apresentacao/`: HTML, PDF, PowerPoint e roteiro didático para 14 a 15 minutos;
+- `GUIA_DE_ESTUDO.md`: material de revisão com mapa dos slides, conceitos e respostas para a apresentação;
 - `fontes/`: arquivos Inter usados no HTML e incorporados ao PPTX;
 - `scripts/`: geração reproduzível do notebook, relatório, HTML e PPTX;
 - `originais/`: pacote recebido, preservado sem alterações.

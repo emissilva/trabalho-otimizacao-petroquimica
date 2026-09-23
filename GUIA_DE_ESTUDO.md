@@ -1,4 +1,4 @@
-# Guia de estudo — Pipeline de ML, Otimização e Decisão de Manutenção
+# Guia de estudo: Pipeline de ML, Otimização e Decisão de Manutenção
 
 Este documento explica o trabalho de forma didática. A ideia é ajudar você a entender o que foi feito, por que cada etapa existe e como explicar as decisões durante a apresentação.
 
@@ -22,8 +22,24 @@ Os três entregáveis pedidos são:
 | Entregável | Arquivo |
 |---|---|
 | Notebook executável | `notebook/pipeline_petroquimico.ipynb` |
-| Relatório metodológico | `relatorio/relatorio.md` e `relatorio/relatorio.pdf` |
-| Apresentação de 10–15 minutos | `apresentacao/apresentacao.pptx` e `apresentacao/roteiro_apresentacao.md` |
+| Relatório metodológico | `relatorio/relatorio.md`, `relatorio/relatorio.html` e `relatorio/relatorio.pdf` |
+| Apresentação de 10–15 minutos | `apresentacao/apresentacao.html`, `.pdf`, `.pptx` e `apresentacao/roteiro_apresentacao.md` |
+
+### Mapa dos slides que exigem mais explicação
+
+| Slide | Tema | Onde estudar neste guia |
+|---:|---|---|
+| 5 | Targets e preparação das variáveis | Seções 2 a 4 |
+| 6 | Como as fórmulas foram verificadas | Seção 5 |
+| 8 | Modelo híbrido físico | Seções 7 e 8 |
+| 9 | Três folds walk-forward | Seção 6 |
+| 10 | Targets, escolha do modelo e incerteza | Seção 8 |
+| 11 | Funcionamento do otimizador | Seções 11 a 13 |
+| 12 | Cenários de recuperação | Seção 10 |
+| 13 | Configuração condicionada à recuperação | Seção 14 |
+| 14 | Valores financeiros assumidos | Seção 16 |
+| 16 | Produção, tempo e custo | Seções 15 a 17 |
+| 17 | Aplicação da incerteza | Seções 8 e 14 |
 
 Ao encontrar a indicação **“Item X do enunciado”**, você saberá exatamente qual exigência está sendo estudada.
 
@@ -110,6 +126,13 @@ Os modelos precisam prever:
 - `Product_Yield_Tons`: produção por intervalo de quatro horas;
 - `Energy_Intensity`: energia consumida por tonelada produzida.
 
+Target significa a variável que o modelo tenta prever. Não significa escolher se o trabalho vai focar somente em energia ou somente em produção. O pipeline possui dois problemas de previsão:
+
+1. prever quantas toneladas serão produzidas em quatro horas;
+2. prever quanta energia equivalente será consumida por tonelada.
+
+Na otimização, as duas previsões são usadas juntas. A intensidade energética é minimizada, enquanto a produção deve permanecer acima da meta mínima.
+
 ## 3. O que foi feito na análise exploratória?
 
 **Referência: item 6 — etapa EDA do pipeline; também sustenta os itens 1 e 2.**
@@ -149,6 +172,14 @@ hour_sin, hour_cos, month_sin, month_cos
 ```
 
 As variáveis categóricas `Unit_Name` e `Catalyst_Type` foram transformadas por one-hot encoding. Nessa técnica, cada categoria vira uma coluna binária.
+
+Também foi criada a interação:
+
+```text
+Flow_Health_Interaction = Feedstock Flow × Sensor Health
+```
+
+Ela representa o efeito conjunto entre a quantidade de matéria-prima alimentada e a condição do equipamento. Essa interação permitiu verificar a fórmula exata usada para gerar a produção na base sintética.
 
 ## 5. O que é target leakage e por que ele é importante?
 
@@ -197,11 +228,23 @@ O treinamento cobre 01/01/2020 a 26/08/2023. O teste cobre 26/08/2023 a 24/07/20
 
 Foi escolhido um corte temporal porque, na prática, usamos o passado para prever o futuro. Uma divisão aleatória poderia misturar períodos futuros no treino e produzir uma avaliação otimista. Além disso, três folds walk-forward expansivos avaliam estabilidade somente dentro dos primeiros 80%.
 
+Os três folds são:
+
+| Fold | Registros de treino | Registros de validação |
+|---|---:|---:|
+| 1 | 1 a 5.000 | 5.001 a 6.000 |
+| 2 | 1 a 6.000 | 6.001 a 7.000 |
+| 3 | 1 a 7.000 | 7.001 a 8.000 |
+
+Walk-forward significa treinar com o passado e validar no período imediatamente posterior. A janela de treino aumenta em cada fold. Os folds não são três modelos diferentes; são três avaliações temporais dos mesmos modelos.
+
+Os últimos 20% não entram nesses folds. Eles permanecem separados para o teste final.
+
 ## 7. Quais modelos foram comparados?
 
 **Referência: item 2 — pelo menos dois modelos para cada target.**
 
-Foram usados três modelos para cada target:
+Foram comparados três algoritmos de Machine Learning e um modelo híbrido para cada target:
 
 ### Linear Regression
 
@@ -240,6 +283,30 @@ Vantagem: consegue capturar relações não lineares com boa precisão.
 
 Limitação: exige cuidado com parâmetros e generalização.
 
+### Modelo híbrido físico
+
+O híbrido físico combina relações conhecidas da estrutura do processo com valores estimados a partir dos dados. Neste trabalho, “físico” não significa um simulador completo da planta.
+
+Para produção, ele usa a identidade:
+
+```text
+Yield = 0,18 × Flow × Health
+```
+
+Para energia, ele usa:
+
+```text
+Energy Intensity prevista =
+    energia equivalente média do treino / produção prevista
+```
+
+Eletricidade e gás reais não entram como features, pois são resultados pós-operação. O híbrido foi escolhido porque:
+
+- ficou tecnicamente empatado com Gradient Boosting nos três folds;
+- foi ligeiramente melhor no teste final;
+- mantém coerência com as fórmulas verificadas na base;
+- é mais fácil de explicar e auditar.
+
 ## 8. Como interpretar as métricas?
 
 **Referência: item 2 — tabela de comparação e justificativa do modelo escolhido.**
@@ -266,7 +333,32 @@ Escolhas finais:
 - energia: modelo híbrido, com energia equivalente esperada dividida pela produção prevista;
 - produção: identidade `0,18 × Flow × Health`.
 
+O `R² = 1,0000` da produção não significa que descobrimos um modelo perfeito para qualquer planta. Ele ocorre porque a própria base sintética gera a produção por uma fórmula exata. O erro real é apenas numérico, próximo de `1,42 × 10⁻¹⁴`, e aparece como `0,0000` após o arredondamento.
+
+Na tabela de média dos três folds, Gradient Boosting e híbrido apresentam resultados praticamente iguais para energia:
+
+| Modelo de energia | RMSE médio | Variação entre folds |
+|---|---:|---:|
+| Gradient Boosting | 0,3311 | ± 0,0050 |
+| **Híbrido físico** | **0,3312** | **± 0,0049** |
+| Random Forest | 0,3338 | ± 0,0035 |
+| Regressão linear | 0,3409 | ± 0,0077 |
+
+O destaque do híbrido indica o modelo selecionado. O Random Forest não foi escolhido. A decisão não depende apenas da menor diferença decimal, mas também da estabilidade, do teste final e da interpretabilidade.
+
 O modelo de produção reproduz exatamente a estrutura sintética da base. O modelo de energia possui incerteza relevante. Sua previsão final de 1,849 deve ser interpretada junto com o RMSE de 0,340 e a margem conformal de 90% de 0,552. Essa margem cobriu 89,4% do teste final.
+
+A margem de incerteza foi calculada usando os erros de 1.000 registros reservados para calibração. Ela não representa probabilidade de falha, custo financeiro ou chance de a manutenção funcionar.
+
+Para a recomendação principal:
+
+```text
+Previsão nominal de energia: 1,849
+Margem calibrada:            0,552
+Limite conservador:          2,401
+```
+
+O limite conservador serve para comunicar que a intensidade real pode ficar acima da previsão central. No teste final, esse tipo de intervalo cobriu 89,4% dos valores reais, próximo do objetivo de 90%.
 
 Uma forma de explicar isso é:
 
@@ -323,6 +415,20 @@ Depois foi escolhida a observação mais próxima do centro desse grupo:
 
 Isso torna o cenário mais plausível. Ainda assim, o dataset não contém registros explícitos de manutenção. Portanto, essa mudança continua sendo uma simulação, não uma prova do efeito causal de uma intervenção.
 
+### O que significa recuperação da manutenção?
+
+Recuperação é a parcela da diferença entre a saúde atual `0,578` e a referência saudável `0,970` que seria recuperada após a intervenção.
+
+| Recuperação | Interpretação |
+|---:|---|
+| 0% | Cenário pessimista de sensibilidade. A manutenção não melhora o estado e o cenário perde o custo de R$ 45 mil. |
+| 1,8% | Ponto de equilíbrio estimado. É a menor melhora capaz de compensar o custo assumido da manutenção. |
+| 100% | Cenário principal simulado. O ativo alcança integralmente a referência saudável observada. |
+
+O valor de 0% não é uma previsão do modelo e não significa que concluímos que a manutenção não funciona. Ele responde à pergunta: “o que acontece se pagarmos pela manutenção e o estado não melhorar?”.
+
+O cenário de 100% também não é uma garantia. A configuração final de 121,25 toneladas e intensidade 1,849 foi calculada sob essa hipótese de recuperação integral. Dados reais antes e depois de manutenções seriam necessários para estimar o efeito verdadeiro.
+
 ## 11. Como o problema de otimização foi formulado?
 
 **Referência: item 3 — variáveis de decisão, função objetivo, restrições e limites.**
@@ -346,6 +452,8 @@ minimizar EI_hat(x | estado do equipamento)
 
 Foi adicionado um termo muito pequeno que prefere mudanças menores nos setpoints quando duas configurações possuem praticamente a mesma previsão. Esse termo apenas desempata regiões planas do modelo.
 
+Setpoints são os valores operacionais desejados para vazão, temperatura, pressão e abertura da válvula. O otimizador não controla a planta diretamente. Ele recomenda valores que precisam ser conferidos pela operação e pela engenharia.
+
 ### Restrições
 
 1. A produção prevista deve ser pelo menos a produção observada no caso atual: 64,37 ton/4h.
@@ -360,7 +468,7 @@ Os percentis e a proximidade histórica reduzem extrapolação. Eles não substi
 
 **Referência: item 3 — solver utilizado e justificativa para usar uma alternativa ao `linprog`.**
 
-Os modelos escolhidos são ensembles de árvores. Eles são não lineares e possuem regiões em degraus, o que dificulta o uso de métodos baseados em derivadas.
+O problema principal é não linear porque a intensidade energética é uma razão, as previsões dependem do estado do equipamento e a restrição de proximidade histórica possui geometria conjunta. Por isso, uma formulação linear simples não representa todas as regras usadas na decisão.
 
 `differential_evolution` é um algoritmo global que testa populações de soluções e não exige derivadas.
 
@@ -399,6 +507,12 @@ O `linprog` escolheu valores de canto, comportamento comum em programação line
 | Valve Opening | 79,91% | **79,53%** |
 | Expected Yield | 72,20 ton/4h | **121,25 ton/4h** |
 | Energy Intensity | 3,106 | **1,849** |
+
+A coluna “manutenção imediata” representa o cenário pós-manutenção com 100% da recuperação simulada até a referência saudável. Ela não é uma previsão causal de que qualquer manutenção produzirá esses números.
+
+Portanto, a leitura correta é:
+
+> Se a inspeção confirmar a degradação e se a manutenção levar o ativo ao estado saudável de referência, esta é a configuração operacional calculada pelo pipeline.
 
 A principal diferença entre os cenários não está nos setpoints. Ela está no estado atribuído ao equipamento. Isso reforça uma conclusão importante e também uma limitação:
 
@@ -448,6 +562,10 @@ O dataset não possui preços ou custos reais. Foram adotadas premissas didátic
 | Manutenção planejada | R$ 25.000 |
 | Falha | R$ 300.000 |
 
+Esses valores foram definidos pelo grupo apenas para tornar possível a comparação econômica. Eles não vieram do dataset, de notas fiscais, de ordens de manutenção ou de uma empresa petroquímica real.
+
+A manutenção imediata foi considerada mais cara para representar uma intervenção urgente. A planejada foi considerada mais barata por representar uma parada preparada com antecedência. Essa diferença também é uma hipótese didática.
+
 O custo calculado é parcial:
 
 ```text
@@ -468,6 +586,8 @@ Ele não inclui:
 
 Por isso, a economia encontrada não deve ser apresentada como garantia financeira.
 
+A exposição à falha também utiliza uma hipótese. Foi criado um índice com 60% de peso para baixa saúde, 30% para vibração e 10% para idade do catalisador. Como a base não possui eventos reais de falha, esse índice não é uma probabilidade calibrada.
+
 ## 17. Como interpretar os três cenários?
 
 **Referência: item 4 — produção, energia, custo, condição, risco e impacto esperado.**
@@ -487,6 +607,15 @@ R$ 5.436.123,76 − R$ 5.260.829,62 = R$ 175.294,14
 ```
 
 A análise de sensibilidade variou isoladamente preço de energia, custo de manutenção e custo de falha em ±30%. A economia continuou positiva entre aproximadamente R$ 127 mil e R$ 224 mil. Em uma comparação com as mesmas 10 mil toneladas, a economia varia de `-R$ 45 mil` com recuperação nula a `R$ 1,72 milhão` com recuperação integral.
+
+Os tempos para produzir as mesmas 10 mil toneladas foram:
+
+| Cenário | Tempo estimado |
+|---|---:|
+| Sem manutenção | 23,08 dias |
+| Manutenção imediata | 14,08 dias, incluindo oito horas de parada |
+
+Essa diferença de tempo depende diretamente da recuperação integral assumida. Se a manutenção produzir recuperação menor, a vantagem também será menor.
 
 Isso mostra robustez dentro das premissas testadas. Não elimina o risco de as premissas reais serem muito diferentes.
 
@@ -599,6 +728,38 @@ Uma resposta segura e objetiva seria:
 
 **Referência: revisão de todos os itens, com foco na defesa das escolhas metodológicas.**
 
+### O que significa target de energia e target de produção?
+
+Target é a variável prevista. O target de energia é `Energy_Intensity`; o target de produção é `Product_Yield_Tons`. Não significa escolher entre focar em energia ou em produção. O pipeline prevê as duas variáveis e a otimização minimiza energia respeitando a meta de produção.
+
+### O que são os três folds walk-forward?
+
+São três avaliações temporais. Em cada fold, o modelo treina com os registros anteriores e é validado nos mil registros seguintes. A janela de treino cresce de 5 mil para 6 mil e depois 7 mil registros.
+
+### O que é o modelo híbrido físico?
+
+É um modelo que combina fórmulas verificadas na estrutura da base com estimativas calculadas nos dados de treinamento. Para produção, usa `0,18 × Flow × Health`; para energia, usa a energia equivalente média dividida pela produção prevista.
+
+### Por que a produção ficou com R² igual a 1?
+
+Porque a base sintética gera a produção por uma fórmula determinística exata. Isso explica o resultado perfeito na base, mas não garante erro zero em uma planta real.
+
+### O Random Forest foi escolhido?
+
+Não. Para energia e para a recomendação final foi escolhido o híbrido físico. Os resultados do Random Forest permanecem apenas para comparação.
+
+### O que significa a margem de incerteza de 0,552?
+
+É uma margem calculada com os erros de 1.000 registros de calibração. Somada à previsão nominal de energia `1,849`, produz o limite conservador `2,401`. Ela representa erro de previsão, não probabilidade de falha.
+
+### O que significam 0%, 1,8% e 100% de recuperação?
+
+Zero por cento é o cenário pessimista sem melhora. `1,8%` é o ponto de equilíbrio estimado para recuperar o custo da intervenção. Cem por cento é o cenário principal em que o ativo alcança a referência saudável. Nenhum desses percentuais foi aprendido de intervenções reais.
+
+### De onde vieram os valores de manutenção?
+
+São premissas didáticas definidas pelo grupo: R$ 45 mil para manutenção imediata, R$ 25 mil para planejada, R$ 300 mil para falha e R$ 130 por unidade de energia. O dataset não contém esses valores.
+
 ### Por que vocês não usaram eletricidade e gás no modelo de energia?
 
 Porque eles formam matematicamente o target. Além disso, são conhecidos depois da operação, enquanto a decisão precisa acontecer antes.
@@ -646,6 +807,11 @@ Porque uma parada é cara, afeta segurança e produção, e o modelo de risco n�
 | RMSE | Erro que penaliza mais erros grandes |
 | Ensemble | Combinação de vários modelos |
 | Setpoint | Valor operacional desejado para um controle |
+| Walk-forward | Validação que treina com o passado e testa no período seguinte |
+| Fold | Uma divisão de treino e validação usada para avaliar o modelo |
+| Modelo híbrido físico | Combinação de relações conhecidas do processo com estimativas dos dados |
+| Margem conformal | Margem de erro calibrada em dados separados para formar um limite conservador |
+| Recuperação | Parcela da diferença entre o estado atual e a referência saudável atribuída ao cenário de manutenção |
 | Solver | Algoritmo que resolve o problema de otimização |
 | Constraint | Restrição que a solução deve respeitar |
 | Surrogate | Modelo mais simples usado como aproximação |
