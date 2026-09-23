@@ -23,7 +23,7 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 ## 5. Dados e exploração
 
-“A base possui 10 mil registros, de 2020 a 2024, em três unidades, sem dados faltantes ou duplicados. Durante a análise, descobrimos que a produção segue exatamente a fórmula mostrada no slide. Isso indica que a base é sintética e explica o erro praticamente zero na previsão de produção.”
+“A base possui 10 mil registros, de 2020 a 2024, em três unidades, sem dados faltantes, duplicados ou horários repetidos. Product Yield representa toneladas produzidas a cada quatro horas. Energy Intensity representa a energia equivalente consumida por tonelada. Também criamos variáveis de tempo e a interação entre vazão e saúde.”
 
 ## 6. Como as fórmulas foram verificadas
 
@@ -35,7 +35,7 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 ## 8. Comparação dos modelos
 
-“Testamos diferentes modelos para energia e produção. Para energia, o modelo híbrido teve o menor erro e também foi mais fácil de explicar. Para produção, o modelo com a interação entre vazão e saúde reproduziu a fórmula da base. Por isso, esses dois foram escolhidos para o pipeline.”
+“Testamos diferentes modelos para energia e produção. O híbrido físico combina relações conhecidas do processo com estimativas dos dados. Para produção, ele aplica a relação entre vazão e saúde. Para energia, utiliza a energia equivalente média do treino dividida pela produção prevista. Ele foi escolhido porque teve desempenho estável e é mais fácil de interpretar.”
 
 ## 9. Validação temporal e escolha do modelo
 
@@ -43,15 +43,15 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 ## 10. Validação e incerteza
 
-“Como os dados têm ordem no tempo, treinamos com o passado e validamos em períodos seguintes. Também reservamos o teste final para o fim. Na energia, o erro RMSE foi 0,340. Criamos ainda uma margem de segurança de 0,552, que cobriu 89,4% dos casos do teste.”
+“Na tabela da esquerda estão os resultados do teste final, que ficou separado até o fim. Na direita está a média dos três folds. Híbrido e Gradient Boosting ficaram praticamente empatados. Escolhemos o híbrido pela interpretação e pelo resultado ligeiramente melhor no teste. A margem de 0,552 cobriu 89,4% dos casos, próxima da meta de 90%.”
 
 ## 11. Otimização
 
-“O otimizador procura reduzir a intensidade energética, mas precisa manter uma produção mínima e respeitar faixas próximas ao histórico. Usamos um método não linear como principal e também fizemos duas verificações independentes para confirmar a direção da solução.”
+“O otimizador testa combinações de vazão, temperatura, pressão e abertura da válvula. Primeiro procura reduzir a intensidade energética. Depois elimina alternativas com produção abaixo de 64,37 toneladas ou muito distantes do histórico. Usamos Differential Evolution porque o problema não é linear. Uma busca aleatória e uma versão linear simplificada conferiram a direção do resultado.”
 
 ## 12. Estado do ativo
 
-“Para representar o estado após a manutenção, usamos uma observação saudável que realmente existe na base. Não criamos um equipamento perfeito artificialmente. Antes de qualquer parada, recomendamos uma inspeção para confirmar os sensores e a condição do ativo.”
+“Comparamos o estado atual com uma observação saudável real da mesma unidade e catalisador. Recuperação é a parte da diferença entre saúde 0,578 e 0,970 que seria recuperada. Com zero por cento de recuperação, perdemos o custo da intervenção. A partir de aproximadamente 1,8%, a economia estimada compensa os R$ 45 mil. Isso é um ponto de equilíbrio do cenário, não uma recuperação comprovada.”
 
 ## 13. Resultado final
 
@@ -71,7 +71,7 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 ## 17. Margem e sensibilidade
 
-“A previsão de energia não deve ser tratada como um número exato. O valor nominal é 1,849 e o limite superior é 2,401. Também testamos mudanças nas premissas financeiras. O ponto de equilíbrio foi uma recuperação de 1,8%. Sem recuperação, a manutenção gera uma perda de R$ 45 mil.”
+“A previsão nominal da intensidade energética é 1,849. Somamos a margem calibrada de 0,552 e obtemos o limite conservador de 2,401. Na produção, o limite inferior permanece em 121,25 porque a base possui uma fórmula exata. Os setpoints não mudaram porque a mesma margem foi aplicada às alternativas. O que muda é a garantia que comunicamos.”
 
 ## 18. Alternativas de operação
 
