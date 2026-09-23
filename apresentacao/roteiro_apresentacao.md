@@ -37,9 +37,9 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 “Testamos diferentes modelos para energia e produção. Para energia, o modelo híbrido teve o menor erro e também foi mais fácil de explicar. Para produção, o modelo com a interação entre vazão e saúde reproduziu a fórmula da base. Por isso, esses dois foram escolhidos para o pipeline.”
 
-## 9. Métricas e walk-forward
+## 9. Validação temporal e escolha do modelo
 
-“O R² indica quanto da variação foi explicada. MAE é o erro médio e RMSE dá mais peso aos erros grandes. Para energia, explicamos 69,3% da variação, com erro médio próximo de 9,6% da média. Também fizemos três validações walk-forward, treinando sempre com o passado e validando no período seguinte.”
+“Fizemos três validações walk-forward, treinando sempre com os dados anteriores e validando nos mil registros seguintes. Assim, preservamos a ordem temporal e verificamos se o resultado permanecia estável. O híbrido foi escolhido porque empatou com o Gradient Boosting nos folds, foi ligeiramente melhor no teste final e é mais fácil de interpretar.”
 
 ## 10. Validação e incerteza
 
