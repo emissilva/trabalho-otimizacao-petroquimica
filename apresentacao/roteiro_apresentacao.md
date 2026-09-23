@@ -1,6 +1,6 @@
-# Roteiro simplificado — apresentação final
+# Roteiro simplificado da apresentação
 
-**Duração estimada:** 12–14 minutos  
+**Duração estimada:** 12 a 14 minutos  
 **Formato:** 16 slides
 
 Use este texto como guia. Não é necessário decorar nem ler palavra por palavra.
@@ -13,7 +13,7 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 “Começamos com o caso mais degradado do período de teste. O equipamento apresentava baixa saúde, vibração elevada e catalisador envelhecido. A pergunta era: como melhorar o desempenho sem reduzir a produção e sem tomar uma decisão insegura?”
 
-## 3. Resposta executiva
+## 3. Configuração e critérios para a decisão
 
 “A recomendação principal usa vazão de 694,11 m³/h e prevê 121,25 toneladas a cada quatro horas. A análise também indica que uma pequena recuperação, de 1,8%, já compensaria o custo da manutenção. Mesmo assim, a parada precisa de aprovação humana.”
 
