@@ -29,7 +29,9 @@ Os três entregáveis pedidos são:
 
 | Slide | Tema | Onde estudar neste guia |
 |---:|---|---|
-| 5 | Targets e preparação das variáveis | Seções 2 a 4 |
+| 3 | Colunas utilizadas, targets e dados excluídos | Seções 2, 4 e 5 |
+| 4 | Respostas sustentadas pela base e limitações | Seções 3, 8 e 11 |
+| 5 | Comparação por produto/unidade | Seção 3 |
 | 6 | Como as fórmulas foram verificadas | Seção 5 |
 | 8 | Modelo híbrido físico | Seções 7 e 8 |
 | 9 | Três folds walk-forward | Seção 6 |
@@ -133,6 +135,19 @@ Target significa a variável que o modelo tenta prever. Não significa escolher 
 
 Na otimização, as duas previsões são usadas juntas. A intensidade energética é minimizada, enquanto a produção deve permanecer acima da meta mínima.
 
+### O que entrou e o que foi desconsiderado como feature?
+
+| Papel | Quantidade | Uso |
+|---|---:|---|
+| Entradas originais pré-operação | 11 | Usadas diretamente ou na criação de features |
+| Targets | 2 | Produção e intensidade energética |
+| Medições pós-operação | 3 | Eletricidade, gás e vapor; não entram como features |
+| Features criadas | 5 | Hora/mês em seno e cosseno e `Flow × Health` |
+
+Para prever energia, o Yield observado também é retirado das entradas porque ainda não existe no momento da decisão. O pipeline usa o Yield previsto.
+
+“Desconsiderar” significa não entregar aquela coluna ao modelo como informação da linha futura. Eletricidade e gás continuam úteis para auditar a fórmula e calcular, somente nos dados de treino, uma referência média de energia equivalente. Vapor não participa da identidade encontrada e não entra no modelo.
+
 ## 3. O que foi feito na análise exploratória?
 
 **Referência: item 6 — etapa EDA do pipeline; também sustenta os itens 1 e 2.**
@@ -185,7 +200,13 @@ Ela representa o efeito conjunto entre a quantidade de matéria-prima alimentada
 
 **Referência: item 2 — exigência explícita de verificar possível target leakage nas variáveis de energia.**
 
-Target leakage acontece quando o modelo recebe uma informação que contém direta ou indiretamente a resposta que ele deveria prever.
+Target leakage acontece quando o modelo recebe uma informação que contém direta ou indiretamente a resposta que ele deveria prever. Uma forma simples de verificar é perguntar:
+
+> Eu conheceria este valor no momento de escolher os setpoints?
+
+Se o valor só surge depois da operação, ele não pode ser usado como entrada. Seria como entregar parte do gabarito ao modelo: a nota parece ótima, mas não representa uma previsão possível no mundo real.
+
+As constantes foram estimadas nos primeiros 70% da série e verificadas nos 10.000 registros. Ao ajustar `Energy Intensity × Yield` como combinação de eletricidade e gás, encontramos `3,6` e `0,035`:
 
 Foi encontrada a identidade exata:
 
@@ -195,7 +216,13 @@ Energy_Intensity =
     / Product_Yield_Tons
 ```
 
-O erro máximo ao reconstruir o target com essa fórmula foi aproximadamente `1,78 × 10⁻¹⁵`, praticamente zero.
+O erro máximo ao reconstruir o target com essa fórmula foi aproximadamente `3,55 × 10⁻¹⁵`, praticamente zero.
+
+- `3,6` coincide com a conversão de 1 MWh para 3,6 GJ;
+- `0,035` corresponde a 0,035 GJ, ou 35 MJ, por m³ de gás;
+- na base, os dois fatores colocam eletricidade e gás em uma escala comum de energia equivalente.
+
+Como o dataset é sintético e não documenta formalmente todo o balanço físico, esses números são tratados como fatores da base, não como parâmetros oficiais ou universais da planta.
 
 Isso significa que usar eletricidade, gás natural ou produção para prever `Energy_Intensity` seria entregar a resposta ao modelo. O desempenho pareceria excelente, mas o modelo não seria útil antes da operação, quando esses valores ainda não são conhecidos.
 
@@ -208,7 +235,9 @@ Product_Yield_Tons =
     0,18 × Feedstock_Flow_m3h × Sensor_Health_Index
 ```
 
-Essa relação não é leakage, pois vazão e saúde são informações pré-operacionais. Ela mostra que a produção da base sintética é determinística e justifica o modelo híbrido.
+O `0,18` é o fator que transforma vazão ajustada pela saúde em toneladas por intervalo no gerador sintético. Essa relação não é leakage, pois vazão e saúde são informações pré-operacionais. Ela mostra que a produção da base sintética é determinística e justifica o modelo híbrido, mas não representa uma eficiência universal de plantas reais.
+
+O modelo híbrido de energia também não recebe eletricidade, gás ou produção observada da linha futura. Ele usa uma única média de energia equivalente calculada no treino e divide essa referência pela produção prevista a partir de dados pré-operacionais. Usar passado agregado para ajustar o modelo é treinamento; usar a resposta futura da própria linha seria leakage.
 
 Essa é uma das descobertas mais importantes do trabalho. Uma forma simples de explicá-la é:
 
@@ -419,11 +448,29 @@ Isso torna o cenário mais plausível. Ainda assim, o dataset não contém regis
 
 Recuperação é a parcela da diferença entre a saúde atual `0,578` e a referência saudável `0,970` que seria recuperada após a intervenção.
 
-| Recuperação | Interpretação |
-|---:|---|
-| 0% | Cenário pessimista de sensibilidade. A manutenção não melhora o estado e o cenário perde o custo de R$ 45 mil. |
-| 1,8% | Ponto de equilíbrio estimado. É a menor melhora capaz de compensar o custo assumido da manutenção. |
-| 100% | Cenário principal simulado. O ativo alcança integralmente a referência saudável observada. |
+Esses dois extremos não foram inventados. O valor `0,578` pertence ao registro real com maior escore de degradação no período de teste. O valor `0,970` pertence a uma linha real do treino, da mesma unidade e do mesmo catalisador, escolhida próxima ao centro do grupo com saúde no quartil superior, vibração no quartil inferior e idade do catalisador no quartil inferior. Os níveis de 25%, 50% e 75% apenas interpolam a distância entre os extremos; eles não são observações feitas depois de uma manutenção.
+
+Consideramos uma recuperação linear porque a relação abaixo foi exata nas 10.000 linhas:
+
+```text
+Yield = 0,18 × Flow × Health
+```
+
+Mantendo a vazão, aumentar a saúde em determinada proporção aumenta a produção na mesma proporção. Para uma fração de recuperação `r`, usamos:
+
+```text
+Health(r) = 0,578 + r × (0,970 − 0,578)
+```
+
+| Recuperação | Saúde simulada | Yield (t/4h) | Ganho de produção | Economia vs. não manter |
+|---:|---:|---:|---:|---:|
+| 0% | 0,578 | 72,20 | 0% | -R$ 45 mil |
+| 25% | 0,676 | 84,46 | +17,0% | R$ 588,8 mil |
+| 50% | 0,774 | 96,73 | +34,0% | R$ 1,062 milhão |
+| 75% | 0,872 | 108,99 | +51,0% | R$ 1,429 milhão |
+| 100% | 0,970 | 121,25 | +67,9% | R$ 1,721 milhão |
+
+Assim, saúde, recuperação simulada e ganho de produção são proporcionais quando a vazão é mantida. A economia não é simplesmente multiplicada pelo percentual de saúde: ela é recalculada em cada cenário porque depende também da intensidade energética, da parada, do custo de manutenção e da exposição assumida à falha. A interpolação dos custos coloca o ponto de equilíbrio em aproximadamente `1,8%` de recuperação.
 
 O valor de 0% não é uma previsão do modelo e não significa que concluímos que a manutenção não funciona. Ele responde à pergunta: “o que acontece se pagarmos pela manutenção e o estado não melhorar?”.
 
@@ -724,6 +771,35 @@ Uma resposta segura e objetiva seria:
 
 > O pipeline recomendou vazão de 694,11 m³/h, temperatura de 795,14 °C, pressão de 33,32 bar e válvula em 79,53%. Para o estado saudável simulado, o modelo prevê 121,25 toneladas por intervalo e intensidade de 1,849. Sob as premissas didáticas, a manutenção imediata reduz o custo parcial em aproximadamente R$ 175 mil em 30 dias; o ponto de equilíbrio é cerca de 1,8% de recuperação. Recomendamos inspeção e aprovação humana antes da parada.
 
+### De onde vem cada resposta do último slide?
+
+O último slide mistura quatro tipos de informação. É importante diferenciá-los ao responder:
+
+- **dado observado:** valor que realmente existe no CSV;
+- **resultado do modelo/otimizador:** valor calculado pelo pipeline;
+- **premissa didática:** número definido pelo grupo porque não existe no dataset;
+- **recomendação:** decisão construída a partir dos resultados e das limitações.
+
+| Pergunta do último slide | De onde veio a resposta? | Tipo de evidência | Onde conferir |
+|---|---|---|---|
+| **1. Qual configuração foi recomendada?** | O `differential_evolution` procurou os setpoints que minimizam a intensidade prevista, mantendo Yield ≥ 64,37, limites p1–p99 da unidade e proximidade ao histórico. Encontrou Flow `694,11`, temperatura `795,14`, pressão `33,32` e válvula `79,53`. | Resultado do modelo e do otimizador | Notebook: `opt_maintenance`, `robust_comparison` e `final_table`; relatório: seções 3.1–3.4 e 7; slides 11, 13 e 17. |
+| **2. A manutenção deve ser realizada?** | O caso é o maior escore de degradação do teste: saúde `0,578`, vibração `8,126` e catalisador com `348` dias. A referência saudável tem saúde `0,970`, vibração `1,749` e `58` dias. Como a base não registra efeitos reais de manutenção, a conclusão é condicional: inspecionar e manter apenas se a degradação for confirmada. | Dados observados + cenário do modelo + recomendação humana | Notebook: células `current`, `reference`, `recovery_sensitivity`; relatório: seções 3.2, 4.1 e 4.2; slides 2 e 12. |
+| **3. Qual foi o impacto econômico?** | Em 30 dias, o custo parcial cai de `R$ 5.436.123,76` para `R$ 5.260.829,62`. A diferença é `R$ 175.294,14`. O cálculo usa R$ 130 por unidade de energia, R$ 45 mil de manutenção e R$ 300 mil de falha — valores que não existem no CSV. | Cálculo de cenário baseado em premissas | Notebook: `scenario_table`, `fixed_production_comparison` e `financial_sensitivity`; relatório: seção 4; slides 14–16. |
+| **4. Quais são os principais riscos?** | O modelo de energia tem RMSE `0,340`, margem `0,552` e cobertura de `89,4%`; a base não possui falhas, intervenções, limites oficiais nem custos reais. Portanto, existem riscos de erro, sensor incorreto, extrapolação, drift e premissas financeiras inadequadas. | Métricas reproduzidas + lacunas do dataset | Notebook: `comparison`, calibração conformal e diagnóstico de suporte; relatório: seções 2.3, 3.4, 4 e 8; slides 10, 17 e 19. |
+| **5. A decisão deve ser automática ou humana?** | Monitoramento e alertas são frequentes e reversíveis; uma parada é cara, afeta segurança e não está sustentada por rótulos reais de falha. Por isso, setpoints são supervisionados e a parada exige aprovação humana. | Recomendação de governança, não previsão do modelo | Notebook e relatório: seção 5; slides 19 e 20. |
+| **6. Quais dados adicionais são necessários?** | A lista vem da comparação entre o que seria necessário para operar a solução e o que não existe nas 16 colunas: falhas, manutenções, antes/depois, limites oficiais, preços, margem, demanda, estoque e custo completo da parada. | Análise das lacunas do dataset | Guia: seções 21 e 22; relatório e notebook: conclusão; slide 20. |
+
+### Como explicar sem decorar todos os cálculos
+
+Use esta sequência curta:
+
+1. **Configuração:** “veio do otimizador, respeitando produção e histórico”.
+2. **Manutenção:** “veio do cenário degradado, mas depende de inspeção porque não temos intervenções reais”.
+3. **Economia:** “veio da diferença entre os custos dos cenários e depende das premissas financeiras”.
+4. **Riscos:** “vieram do erro medido do modelo e dos dados ausentes”.
+5. **Automação:** “foi uma recomendação de segurança, não uma previsão”.
+6. **Dados adicionais:** “vieram das lacunas encontradas nas 16 colunas da base”.
+
 ## 24. Perguntas que o professor pode fazer
 
 **Referência: revisão de todos os itens, com foco na defesa das escolhas metodológicas.**
@@ -754,7 +830,7 @@ Não. Para energia e para a recomendação final foi escolhido o híbrido físic
 
 ### O que significam 0%, 1,8% e 100% de recuperação?
 
-Zero por cento é o cenário pessimista sem melhora. `1,8%` é o ponto de equilíbrio estimado para recuperar o custo da intervenção. Cem por cento é o cenário principal em que o ativo alcança a referência saudável. Nenhum desses percentuais foi aprendido de intervenções reais.
+Zero por cento é o cenário pessimista sem melhora. `1,8%` é o ponto de equilíbrio estimado para recuperar o custo da intervenção. Cem por cento é o cenário principal em que o ativo alcança a referência saudável. Por exemplo, `50%` de recuperação leva a saúde de `0,578` até `0,774`, a metade do caminho até `0,970`; com a mesma vazão, a produção passa de `72,20` para `96,73 t/4h`, ganho de `34,0%`. Saúde e produção são proporcionais nessa simulação porque a fórmula `Yield = 0,18 × Flow × Health` foi exata nas 10.000 linhas. A economia é recalculada, e não proporcional, porque também incorpora energia, parada, manutenção e risco. Nenhum desses percentuais foi aprendido de intervenções reais.
 
 ### De onde vieram os valores de manutenção?
 
@@ -763,6 +839,10 @@ São premissas didáticas definidas pelo grupo: R$ 45 mil para manutenção imed
 ### Por que vocês não usaram eletricidade e gás no modelo de energia?
 
 Porque eles formam matematicamente o target. Além disso, são conhecidos depois da operação, enquanto a decisão precisa acontecer antes.
+
+### Então por que 3,6 e 0,035 aparecem no modelo híbrido?
+
+Eles são usados para transformar o histórico de eletricidade e gás do conjunto de treino em uma referência média de energia equivalente. O modelo não recebe os consumos reais da linha futura. Essa diferença separa aprendizado histórico válido de target leakage.
 
 ### Por que o modelo de produção é tão preciso?
 

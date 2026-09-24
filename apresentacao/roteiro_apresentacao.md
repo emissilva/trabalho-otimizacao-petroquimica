@@ -13,25 +13,25 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 “Começamos com o caso mais degradado do período de teste. O equipamento apresentava baixa saúde, vibração elevada e catalisador envelhecido. A pergunta era: como melhorar o desempenho sem reduzir a produção e sem tomar uma decisão insegura?”
 
-## 3. Configuração e critérios para a decisão
+## 3. Dados utilizados e desconsiderados
 
-“A recomendação principal usa vazão de 694,11 m³/h e prevê 121,25 toneladas a cada quatro horas. A análise também indica que uma pequena recuperação, de 1,8%, já compensaria o custo da manutenção. Mesmo assim, a parada precisa de aprovação humana.”
+“A base tem 10 mil registros, 16 colunas, medições a cada quatro horas e não possui nulos ou duplicatas. Das colunas originais, 11 representam informações disponíveis antes da operação e foram usadas como entradas. Product Yield e Energy Intensity são os dois targets. Electricity, Natural Gas e Steam aparecem depois da operação e foram retiradas das features. O Yield observado também não entra no modelo de energia; usamos somente o Yield previsto. Essas colunas não foram apagadas: eletricidade e gás foram mantidos para auditar a fórmula e calcular uma referência usando apenas o treino.”
 
-## 4. Negócio e pipeline
+## 4. O que a base permite responder
 
-“Separamos as variáveis em quatro grupos. Algumas podem ser controladas, como vazão e temperatura. Outras mostram o estado do equipamento, como saúde e vibração. Também temos fatores externos e os resultados que queremos prever. A partir disso, montamos o pipeline completo mostrado no slide.”
+“Com Flow e Health, a base permite reconstruir exatamente a produção. Para energia, o modelo explica cerca de 69% da variação e tem RMSE de 0,340. Para otimizar, ajustamos Flow, temperatura, pressão e válvula, exigindo produção mínima de 64,37 e proximidade ao histórico. Para manutenção, a base só permite comparar cenários: não existem registros reais de falhas ou intervenções para provar o efeito da manutenção.”
 
 ## 5. Dados e exploração
 
-“A base possui 10 mil registros, de 2020 a 2024, em três unidades, sem dados faltantes, duplicados ou horários repetidos. Product Yield representa toneladas produzidas a cada quatro horas. Energy Intensity representa a energia equivalente consumida por tonelada. Também criamos variáveis de tempo e a interação entre vazão e saúde.”
+“Também verificamos se seria necessário avaliar ou modelar cada produto separadamente. Como a base não tem uma coluna de produto, usamos as unidades de amônia, etileno e metanol como proxy. Elas possuem entre 3.299 e 3.354 registros, intensidade média entre 2,882 e 2,887 e produção média entre 80,01 e 80,38 toneladas. Nos modelos de energia, o RMSE global foi 0,337, 0,352 e 0,338, enquanto os modelos separados ficaram em 0,343, 0,358 e 0,340. Como não houve melhora, mantivemos um único modelo e usamos a avaliação por unidade apenas para monitoramento.”
 
 ## 6. Como as fórmulas foram verificadas
 
-“Product Yield é a quantidade produzida em cada intervalo de quatro horas. Dividimos a produção pelo produto entre vazão e saúde e encontramos a constante 0,18 em toda a base. Para energia, reconstruímos a intensidade dividindo a energia equivalente pela produção. Essas verificações mostraram que a base possui relações sintéticas exatas.”
+“Aprendemos as constantes nos primeiros 70% da série e confirmamos a relação em toda a base. O 0,18 transforma Flow vezes Health em produção neste dataset; ele foi usado porque as duas entradas existem antes da operação e a relação é exata. O 3,6 coincide com a conversão de MWh para GJ, e o 0,035 representa 35 megajoules por metro cúbico de gás. Eles colocam as fontes em uma escala energética comum. Como a base é sintética e não documenta todo o balanço físico, esses fatores não são constantes universais de uma planta.”
 
 ## 7. Target leakage
 
-“Também descobrimos que a intensidade energética é calculada usando eletricidade, gás e produção. Como esses valores só são conhecidos depois da operação, eles foram retirados das entradas do modelo. Assim, evitamos dar ao modelo uma resposta que ele não teria no momento da decisão.”
+“A forma mais simples de entender leakage é perguntar: eu conheceria este valor quando fosse escolher os setpoints? Vazão, saúde e condição do equipamento já existem e podem entrar. Eletricidade, gás, vapor e produção observada só aparecem depois e ficam fora. O híbrido usa apenas uma média aprendida no histórico de treino e uma produção prevista; ele nunca recebe os valores futuros da linha que está tentando prever.”
 
 ## 8. Comparação dos modelos
 
@@ -49,9 +49,9 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 “O otimizador testa combinações de vazão, temperatura, pressão e abertura da válvula. Primeiro procura reduzir a intensidade energética. Depois elimina alternativas com produção abaixo de 64,37 toneladas ou muito distantes do histórico. Usamos Differential Evolution porque o problema não é linear. Uma busca aleatória e uma versão linear simplificada conferiram a direção do resultado.”
 
-## 12. Estado do ativo
+## 12. Saúde, produção e recuperação
 
-“A base não possui registros mostrando o resultado real de uma manutenção. Por isso, testamos uma faixa de recuperação. Zero por cento é apenas o cenário pessimista em que a manutenção não melhora o estado e perdemos os R$ 45 mil. Com 1,8%, chegamos ao ponto de equilíbrio. O cenário principal usa 100% da referência saudável, mas isso é uma hipótese que precisa ser confirmada com dados reais.”
+“Não inventamos os extremos. O valor 0,578 pertence ao registro real com maior escore de degradação no teste. O valor 0,970 pertence a um registro real saudável da mesma unidade e do mesmo catalisador no treino, escolhido no centro do grupo com alta saúde, baixa vibração e catalisador mais novo. Os valores entre eles são interpolações, não medições depois de uma manutenção. Recuperar 50% significa percorrer metade dessa distância e chegar a 0,774. Como a base inteira obedece exatamente a Yield igual a 0,18 vezes Flow vezes Health, com a mesma vazão o Yield passa de 72,20 para 96,73 toneladas, ganho de 34%. A economia não é proporcional: foi recalculada em cada cenário e empata perto de 1,8%."
 
 ## 13. Resultado final
 
@@ -83,7 +83,7 @@ Use este texto como guia. Não é necessário decorar nem ler palavra por palavr
 
 ## 20. Conclusão
 
-“A configuração recomendada é a mostrada na tabela final. Devemos inspecionar o equipamento agora e fazer a manutenção se a degradação for confirmada. A economia estimada é de R$ 175 mil em 30 dias, dentro das premissas do estudo. Os principais riscos estão no modelo, nos sensores e na falta de dados reais de manutenção. Para levar a solução à produção, ainda precisamos de falhas reais, histórico de intervenções, limites oficiais e custos completos.”
+“A configuração veio do otimizador, respeitando a produção mínima e o histórico. A manutenção é condicional porque o estado degradado foi observado, mas seu efeito não foi. Os R$ 175 mil vêm da diferença entre os custos dos cenários e dependem das premissas financeiras. Os riscos vêm do erro medido do modelo e das informações ausentes. Por isso, automatizamos monitoramento, mas mantemos a parada com aprovação humana. A origem detalhada de cada resposta está na seção 23 do guia de estudo.”
 
 ## Respostas rápidas para perguntas
 

@@ -92,6 +92,8 @@ Regras adotadas:
 - o caso degradado é escolhido por regra reproduzível no período de teste, sem seleção manual;
 - os limites vêm da unidade analisada e a combinação final precisa estar próxima de configurações realmente observadas;
 - custo e risco são cenários explícitos, não valores reais da empresa.
+
+Das 16 colunas originais, 11 contêm informações disponíveis antes da operação, duas são targets e três são medições pós-operação (`Electricity_MWh`, `Natural_Gas_m3h` e `Steam_Tons_h`). Para prever energia, o Yield observado também fica fora e é substituído pelo Yield previsto. Eletricidade e gás não foram apagados: servem para auditar a fórmula e calcular uma referência exclusivamente no treino. Steam não participa da fórmula nem do modelo. A preparação ainda cria cinco features seguras: hora e mês em seno/cosseno e `Flow × Health`.
 """
     ),
     code(
@@ -146,7 +148,6 @@ df["month_cos"] = np.cos(2 * np.pi * (df["Timestamp"].dt.month - 1) / 12)
 
 # Interação entre duas informações disponíveis antes da operação.
 df["Flow_Health_Interaction"] = df["Feedstock_Flow_m3h"] * df["Sensor_Health_Index"]
-df["Equivalent_Energy"] = 3.6 * df["Electricity_MWh"] + 0.035 * df["Natural_Gas_m3h"]
 
 safe_num_features = [
     "Catalyst_Age_Days", "Sensor_Health_Index", "Vibration_Level_mm_s",
@@ -164,24 +165,67 @@ X = df[safe_num_features + cat_features]
         """
 ### 2.1 Target leakage: identidade exata encontrada
 
-Uma verificação algébrica mostra que o target é calculado exatamente por
+**Regra simples:** antes de incluir uma variável no modelo, perguntamos: “ela já existe no momento em que os setpoints são escolhidos?”. Se a resposta for não, ela não pode entrar como feature. Usar uma medição obtida depois da operação seria como entregar a resposta da prova ao modelo: o erro ficaria artificialmente baixo, mas a previsão não funcionaria no momento da decisão.
+
+As constantes não foram presumidas. Usamos somente os primeiros 70% da série para descobri-las e os 10.000 registros para verificar se as relações permaneciam válidas. Primeiro multiplicamos `Energy_Intensity` por `Product_Yield_Tons` e resolvemos por mínimos quadrados, sem intercepto:
+
+`Energy_Intensity × Product_Yield_Tons = a × Electricity_MWh + b × Natural_Gas_m3h`
+
+O ajuste retorna `a = 3,6` e `b = 0,035`, com erro apenas numérico. Na base, esses valores colocam eletricidade e gás em uma escala comum de energia equivalente: `3,6` coincide com a conversão de MWh para GJ e `0,035` corresponde a 35 MJ por m³ de gás. Como a documentação não fornece o balanço físico nem esclarece a base temporal da vazão de gás, tratamos esses números como fatores da base sintética, não como constantes universais da planta.
+
+Para produção, calculamos a razão `Product_Yield_Tons / (Feedstock_Flow_m3h × Sensor_Health_Index)` no treino; ela retorna `0,18` e permanece igual nos 10.000 registros. Esse `0,18` é o fator que transforma vazão ajustada pela saúde em produção na base sintética — não uma eficiência universal.
+
+Assim, a auditoria encontra:
+
 `Energy_Intensity = (3,6 × Electricity_MWh + 0,035 × Natural_Gas_m3h) / Product_Yield_Tons`.
 
-Logo, eletricidade, gás e produção causariam vazamento direto. `Steam_Tons_h` não participa da identidade, corrigindo a interpretação anterior, mas também é uma medição posterior e não está disponível quando os setpoints são decididos.
+Logo, os valores **observados na mesma linha** de eletricidade, gás e produção causariam vazamento direto. `Steam_Tons_h` não participa da identidade, mas também é uma medição posterior e foi excluída. O modelo híbrido não recebe esses valores futuros: ele usa uma média energética aprendida somente no treino e divide essa referência pela produção prevista a partir de informações pré-operacionais.
 
 Uma segunda auditoria verifica `Product_Yield_Tons = 0,18 × Feedstock_Flow_m3h × Sensor_Health_Index`. A interação usa apenas informações pré-operação: não é leakage, mas evidencia a estrutura sintética da base e permite um modelo híbrido interpretável.
 """
     ),
     code(
         """
-energy_reconstructed = (
-    3.6 * df["Electricity_MWh"] + 0.035 * df["Natural_Gas_m3h"]
-) / df["Product_Yield_Tons"]
+# Descoberta reproduzível de 3,6 e 0,035 somente nos primeiros 70%:
+# ao multiplicar intensidade por produção, o target torna-se uma combinação
+# linear de eletricidade e gás. Os 10.000 registros validam a relação.
+audit_train = df.iloc[:int(len(df) * 0.7)]
+energy_total_from_target_train = (
+    audit_train["Energy_Intensity"] * audit_train["Product_Yield_Tons"]
+).to_numpy()
+energy_sources_train = audit_train[["Electricity_MWh", "Natural_Gas_m3h"]].to_numpy()
+energy_coefficients, *_ = np.linalg.lstsq(
+    energy_sources_train, energy_total_from_target_train, rcond=None
+)
+electricity_factor, natural_gas_factor = energy_coefficients
+
+# Descoberta de 0,18 no treino e validação da razão em todas as linhas.
+yield_factor_by_row = (
+    df["Product_Yield_Tons"]
+    / (df["Feedstock_Flow_m3h"] * df["Sensor_Health_Index"])
+)
+yield_factor = float(yield_factor_by_row.iloc[:len(audit_train)].median())
+
+df["Equivalent_Energy"] = (
+    electricity_factor * df["Electricity_MWh"]
+    + natural_gas_factor * df["Natural_Gas_m3h"]
+)
+energy_reconstructed = df["Equivalent_Energy"] / df["Product_Yield_Tons"]
 identity_error = np.abs(energy_reconstructed - df["Energy_Intensity"])
-yield_reconstructed = 0.18 * df["Flow_Health_Interaction"]
+yield_reconstructed = yield_factor * df["Flow_Health_Interaction"]
 yield_identity_error = np.abs(yield_reconstructed - df["Product_Yield_Tons"])
 
 pd.Series({
+    "coeficiente encontrado — eletricidade": electricity_factor,
+    "coeficiente encontrado — gás natural": natural_gas_factor,
+    "coeficiente encontrado — produção": yield_factor,
+    "desvio-padrão da razão de produção": yield_factor_by_row.std(),
+    "erro máximo da energia equivalente — 10.000 linhas": np.max(
+        np.abs(
+            (df["Energy_Intensity"] * df["Product_Yield_Tons"]).to_numpy()
+            - df[["Electricity_MWh", "Natural_Gas_m3h"]].to_numpy() @ energy_coefficients
+        )
+    ),
     "erro máximo da identidade": identity_error.max(),
     "erro médio da identidade": identity_error.mean(),
     "erro máximo da identidade de produção": yield_identity_error.max(),
@@ -318,6 +362,84 @@ for target, pred in chosen_test_predictions.items():
             "RMSE": np.sqrt(mean_squared_error(group[target], group["pred"])),
         })
 pd.DataFrame(segment_rows).round(4)
+"""
+    ),
+    md(
+        """
+### 2.3 Exploração por produto/unidade
+
+O dataset não possui uma coluna de tipo de produto; por isso, `Unit_Name` foi usado como proxy: amônia, etileno e metanol. A análise compara tamanho dos grupos, médias dos targets e o desempenho temporal de um Gradient Boosting global com modelos treinados separadamente para cada unidade. Esse teste é apenas um diagnóstico de segmentação; ele não substitui a comparação principal dos modelos.
+"""
+    ),
+    code(
+        """
+# Tamanho e médias por produto/unidade.
+product_summary = (
+    df.groupby("Unit_Name")
+      .agg(
+          Registros=("Unit_Name", "size"),
+          Energy_Intensity_media=("Energy_Intensity", "mean"),
+          Product_Yield_media=("Product_Yield_Tons", "mean"),
+      )
+)
+
+# Quanto da variância total é explicado apenas pela unidade (eta quadrado).
+def unit_eta_squared(target):
+    grand_mean = df[target].mean()
+    between = sum(
+        len(group) * (group[target].mean() - grand_mean) ** 2
+        for _, group in df.groupby("Unit_Name")
+    )
+    total = ((df[target] - grand_mean) ** 2).sum()
+    return between / total
+
+display(product_summary.round(4))
+display(pd.Series({
+    "eta² — Energy_Intensity": unit_eta_squared("Energy_Intensity"),
+    "eta² — Product_Yield_Tons": unit_eta_squared("Product_Yield_Tons"),
+}).to_frame("fração da variância explicada pela unidade"))
+"""
+    ),
+    code(
+        """
+# Comparação temporal: um Gradient Boosting global versus um por unidade.
+# Os mesmos 20% finais são usados como teste em ambas as estratégias.
+local_features = safe_num_features + ["Catalyst_Type"]
+
+def build_local_pipeline(model):
+    prep = ColumnTransformer([
+        ("num", "passthrough", safe_num_features),
+        ("cat", OneHotEncoder(handle_unknown="ignore"), ["Catalyst_Type"]),
+    ])
+    return Pipeline([("prep", prep), ("model", model)])
+
+segmentation_rows = []
+for target in ["Energy_Intensity", "Product_Yield_Tons"]:
+    global_prediction = fitted[(target, "GradientBoosting")].predict(X.loc[idx_test])
+    for unit in sorted(df["Unit_Name"].unique()):
+        unit_train = idx_train[df.loc[idx_train, "Unit_Name"].eq(unit)]
+        unit_test = idx_test[df.loc[idx_test, "Unit_Name"].eq(unit)]
+        local_model = build_local_pipeline(
+            GradientBoostingRegressor(random_state=RANDOM_STATE)
+        ).fit(df.loc[unit_train, local_features], df.loc[unit_train, target])
+        local_prediction = local_model.predict(df.loc[unit_test, local_features])
+        global_unit_prediction = global_prediction[df.loc[idx_test, "Unit_Name"].eq(unit).to_numpy()]
+        segmentation_rows.append({
+            "Target": target,
+            "Unidade": unit,
+            "RMSE global": np.sqrt(mean_squared_error(df.loc[unit_test, target], global_unit_prediction)),
+            "RMSE separado": np.sqrt(mean_squared_error(df.loc[unit_test, target], local_prediction)),
+        })
+
+segmentation_comparison = pd.DataFrame(segmentation_rows)
+segmentation_comparison.round(4)
+"""
+    ),
+    md(
+        """
+As unidades são equilibradas (`3.299–3.354` registros), têm médias quase iguais de intensidade (`2,882–2,887`) e produção (`80,01–80,38`) e a unidade explica somente `0,001%` da variância de energia e `0,012%` da produção. Para energia, os RMSEs global versus separado foram `0,337 vs. 0,343` em amônia, `0,352 vs. 0,358` em etileno e `0,338 vs. 0,340` em metanol. Em produção também não houve ganho consistente.
+
+**Decisão:** mantemos um único modelo, com avaliação segmentada como monitoramento. Como as diferenças foram pequenas e os modelos separados reduzem cada treino para cerca de um terço dos dados, a segmentação por produto não foi aprofundada. Dados reais de produtos com processos, preços, margens ou limites distintos poderiam mudar essa decisão.
 """
     ),
     md(
@@ -807,7 +929,17 @@ equal_output = pd.DataFrame([
 equal_output.round(2)
 """
     ),
-    md("### 4.2 Sensibilidade ao efeito causal assumido da manutenção"),
+    md(
+        """
+### 4.2 Sensibilidade ao efeito causal assumido da manutenção
+
+A recuperação é calculada linearmente entre dois estados que existem no dataset. O início, `0,578`, é o registro real com maior escore de degradação no teste. O destino, `0,970`, é uma linha real do treino, da mesma unidade e do mesmo catalisador, escolhida próxima ao centro do grupo com saúde no quartil superior, vibração no quartil inferior e idade do catalisador no quartil inferior. Os pontos de 25%, 50% e 75% são interpolações entre esses registros, não medições realizadas depois de uma manutenção.
+
+Essa escolha é coerente com o dataset porque `Yield = 0,18 × Flow × Health` foi exata nas 10.000 linhas: com vazão constante, saúde e produção variam proporcionalmente. Recuperação de 50% significa chegar à metade da distância entre os dois estados, não definir saúde igual a 0,50.
+
+O ganho econômico não é forçado a ser proporcional. Ele é recalculado para cada estado porque também depende da intensidade energética, do tempo de parada, do custo de manutenção e da exposição assumida à falha. A simulação é condicional à estrutura sintética da base e não prova o efeito causal de uma manutenção real.
+"""
+    ),
     code(
         """
 def interpolated_state(recovery_fraction):

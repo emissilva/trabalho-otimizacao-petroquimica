@@ -148,7 +148,7 @@ def build_presentation():
     s = prs.slides.add_slide(blank); set_bg(s); title(s, "Target leakage: identidade exata", "Auditoria algébrica do target")
     bullets(s, [
         "Energy_Intensity = (3,6 × Electricity + 0,035 × Natural Gas) / Product Yield",
-        "Erro máximo de reconstrução: 1,78 × 10⁻¹⁵.",
+        "Erro máximo de reconstrução: 3,55 × 10⁻¹⁵.",
         "Electricity, Natural Gas e Yield não podem ser features pré-operação.",
         "Steam não entra na fórmula, mas também é medição pós-operação e foi excluído.",
     ], font=19); add_footer(s, 5)

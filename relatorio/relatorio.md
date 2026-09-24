@@ -29,6 +29,17 @@ O trabalho busca uma configuração operacional que reduza a intensidade energé
 
 Regras adotadas: validação temporal; targets e medições pós-operação fora das features; limites calculados na própria unidade; restrição de produção; restrição de proximidade a configurações observadas; custos e risco tratados como premissas didáticas.
 
+Resumo do tratamento das 16 colunas originais:
+
+| Papel | Quantidade | Tratamento |
+|---|---:|---|
+| Entradas disponíveis antes da operação | 11 | Usadas como features ou para criar features |
+| Targets | 2 | `Product_Yield_Tons` e `Energy_Intensity` |
+| Medições pós-operação | 3 | `Electricity_MWh`, `Natural_Gas_m3h` e `Steam_Tons_h`; excluídas das features |
+| Features derivadas | 5 | Hora e mês em seno/cosseno e interação `Flow × Health` |
+
+Para prever energia, o `Product_Yield_Tons` observado também é excluído, pois só é conhecido depois da operação; o pipeline usa a produção prevista. “Excluída das features” não significa removida da análise: eletricidade e gás são usados para auditar a identidade do target e, somente no conjunto de treino, calcular a referência energética do modelo híbrido. Vapor não participa da fórmula e não entra no modelo.
+
 ## 2. Dados e Machine Learning
 
 ### 2.1 Qualidade e exploração
@@ -37,19 +48,48 @@ A base não possui nulos, duplicatas completas nem timestamps duplicados. As lei
 
 Foram criadas features cíclicas de hora e mês. `Unit_Name` e `Catalyst_Type` receberam one-hot encoding. A auditoria também identificou a interação pré-operacional `Feedstock_Flow_m3h × Sensor_Health_Index`.
 
+#### Exploração por produto/unidade
+
+Como não existe uma coluna específica de produto, `Unit_Name` foi usado como proxy para comparar amônia, etileno e metanol.
+
+| Produto/unidade | Registros | Energy Intensity média | Product Yield médio (ton/4h) |
+|---|---:|---:|---:|
+| Amônia | 3.347 | 2,886 | 80,26 |
+| Etileno | 3.354 | 2,882 | 80,38 |
+| Metanol | 3.299 | 2,887 | 80,01 |
+
+As diferenças são muito pequenas. A unidade explica apenas `0,001%` da variância de intensidade energética e `0,012%` da produção. Como teste adicional, comparamos um Gradient Boosting global com modelos separados por unidade, sempre nos mesmos 20% finais da série temporal:
+
+| Target | Produto/unidade | RMSE global | RMSE separado |
+|---|---|---:|---:|
+| Energia | Amônia | **0,337** | 0,343 |
+| Energia | Etileno | **0,352** | 0,358 |
+| Energia | Metanol | **0,338** | 0,340 |
+| Produção | Amônia | **0,136** | 0,150 |
+| Produção | Etileno | 0,149 | **0,149** |
+| Produção | Metanol | **0,209** | 0,242 |
+
+Não houve ganho consistente com a separação; para energia, o modelo global foi melhor nas três unidades. Assim, mantivemos um único modelo e a avaliação por unidade apenas como diagnóstico de monitoramento. A segmentação não foi aprofundada porque reduziria cada treino para aproximadamente um terço da base sem benefício observado. Essa conclusão vale para este dataset sintético; produtos reais com processos, preços, margens ou limites próprios devem ser reavaliados separadamente.
+
 ### 2.2 Target leakage
 
-A auditoria encontrou a identidade exata, com erro numérico máximo de `1,78 × 10⁻¹⁵`:
+Target leakage ocorre quando o modelo recebe uma informação que contém a resposta, mas que ainda não estaria disponível no momento real da decisão. A regra adotada foi simples: **se a variável só é conhecida depois da operação, ela não entra como feature pré-operacional**. Caso contrário, o erro de teste poderia parecer excelente sem representar uma previsão utilizável.
+
+As constantes foram obtidas dos próprios dados, não assumidas. Usamos os primeiros 70% da série para descobri-las e todos os 10.000 registros para validar as relações. Primeiro definimos `Energy_Intensity × Product_Yield_Tons` como a energia equivalente observada e ajustamos, por mínimos quadrados sem intercepto, seus coeficientes em relação a `Electricity_MWh` e `Natural_Gas_m3h`. O ajuste devolveu `3,600` para eletricidade e `0,035` para gás, com erro máximo de reconstrução de aproximadamente `1,99 × 10⁻¹³` nas 10.000 linhas antes da divisão pela produção.
+
+Na fórmula da base, `3,6` coloca a eletricidade na escala de GJ e coincide com a conversão de 1 MWh para 3,6 GJ. O fator `0,035` representa 0,035 GJ, ou 35 MJ, por m³ de gás. Eles são usados para somar as duas fontes em uma medida de energia equivalente. Como a base não documenta formalmente o balanço físico e a coluna de gás está expressa como vazão, esses fatores devem ser tratados como parte da regra sintética do dataset, não como parâmetros universais ou oficiais da planta.
+
+Assim, a auditoria encontrou a identidade exata, com erro numérico máximo de `3,55 × 10⁻¹⁵` após a divisão:
 
 `Energy_Intensity = (3,6 × Electricity_MWh + 0,035 × Natural_Gas_m3h) / Product_Yield_Tons`
 
-Portanto, eletricidade, gás e produção não podem prever intensidade energética numa decisão anterior à operação. `Steam_Tons_h` não participa dessa fórmula, corrigindo a interpretação da versão anterior, mas também é uma medição pós-operação e foi excluída.
+Portanto, os valores observados de eletricidade, gás e produção da mesma operação não podem ser entradas para prever sua intensidade energética. `Steam_Tons_h` não participa dessa fórmula, mas também é uma medição posterior e foi excluída.
 
-Foi encontrada ainda a identidade exata, com erro máximo de `2,84 × 10⁻¹⁴`:
+Para descobrir a constante de produção, calculamos no treino a razão `Product_Yield_Tons / (Feedstock_Flow_m3h × Sensor_Health_Index)` e validamos nas 10.000 linhas. A média, mediana, mínimo e máximo são `0,18`, com desvio-padrão de aproximadamente `2,01 × 10⁻¹⁷`. O `0,18` é o fator de produção embutido no gerador sintético; ele converte vazão ajustada pela saúde em toneladas por intervalo neste dataset, mas não deve ser generalizado para uma planta real. Foi encontrada a identidade exata, com erro máximo de `4,26 × 10⁻¹⁴`:
 
 `Product_Yield_Tons = 0,18 × Feedstock_Flow_m3h × Sensor_Health_Index`
 
-Como vazão e saúde estão disponíveis antes da operação, a interação não é leakage. Ela revela, porém, que a produção da base é sintética e determinística.
+Como vazão e saúde estão disponíveis antes da operação, a interação não é leakage. Ela revela, porém, que a produção da base é sintética e determinística. No modelo de energia, também não usamos eletricidade, gás ou produção reais da linha prevista: usamos apenas uma referência energética média aprendida no treino e a produção estimada com variáveis disponíveis antes da operação.
 
 ### 2.3 Validação e resultados
 
@@ -146,6 +186,10 @@ No horizonte fixo, a manutenção imediata reduz o custo parcial em R$ 175.294,1
 ### 4.1 Mesma produção e sensibilidade causal
 
 Para entregar as mesmas 10 mil toneladas, o cenário sem manutenção leva 23,08 dias e custa parcialmente R$ 4.182.742,08; o cenário imediato leva 14,08 dias, incluindo a parada, e custa R$ 2.461.596,30. Essa diferença depende diretamente da recuperação de saúde assumida.
+
+A recuperação foi calculada linearmente entre dois estados que existem no dataset. O início, `0,578`, é o registro real com maior escore de degradação no teste. O destino, `0,970`, é uma linha real do treino, da mesma unidade e do mesmo catalisador, escolhida próxima ao centro do grupo com saúde no quartil superior, vibração no quartil inferior e idade do catalisador no quartil inferior. Os pontos de 25%, 50% e 75% são interpolações entre esses registros, não medições realizadas depois de uma manutenção.
+
+Usamos essa interpolação porque `Yield = 0,18 × Flow × Health` é exata nos 10.000 registros. Mantendo a vazão, saúde e produção variam proporcionalmente. Uma recuperação de 50% significa percorrer metade da distância entre `0,578` e `0,970`, chegando a `0,774`; não significa definir a saúde como `0,50`. O ganho econômico não foi presumido como proporcional: ele foi recalculado em cada cenário, incluindo intensidade energética, parada, manutenção e exposição assumida à falha.
 
 | Recuperação assumida | Saúde | Yield (ton/4h) | EI | Economia vs. não manter (R$) |
 | 0% | 0,58 | 72,20 | 3,11 | -45.000 |
